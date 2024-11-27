@@ -22,8 +22,6 @@
 #include "PlayerInfoInWorldPanelFactory.h"
 #include "PlayerInfoInWorldState.h"
 
-#include <HookDependencies/HookDependenciesMask.h>
-
 struct PlayerPositionToggle : public FeatureToggle<PlayerPositionToggle> {
     explicit PlayerPositionToggle(PlayerInfoInWorldState& state) noexcept
         : state{state}
@@ -231,14 +229,11 @@ public:
         if (!condition.shouldRun() || !condition.shouldDrawInfoOnPawn(playerPawn))
             return;
 
-        if (!requestCrucialDependencies())
-            return;
-
         const auto absOrigin = playerPawn.absOrigin();
         if (!absOrigin.hasValue())
             return;
 
-        const auto positionInClipSpace = hookContext.template getDependency<WorldToClipSpaceConverter>().toClipSpace(absOrigin.value());
+        const auto positionInClipSpace = hookContext.template make<WorldToClipSpaceConverter>().toClipSpace(absOrigin.value());
         if (!positionInClipSpace.onScreen())
             return;
 
@@ -270,9 +265,6 @@ public:
 
     void hideUnusedPanels() const noexcept
     {
-        if (!requestCrucialDependencies())
-            return;
-
         const auto containerPanel{hookContext.template make<InWorldPanelContainer>().get()};
         if (!containerPanel)
             return;
@@ -299,11 +291,6 @@ private:
     [[nodiscard]] auto& state() const noexcept
     {
         return hookContext.featuresStates().visualFeaturesStates.playerInfoInWorldState;
-    }
-
-    [[nodiscard]] bool requestCrucialDependencies() const noexcept
-    {
-        return hookContext.requestDependencies(kCrucialDependencies);
     }
 
     [[nodiscard]] PanoramaUiPanel<PanoramaUiPanelContext<HookContext>> getPanel(auto&& containerPanel, HudInWorldPanels inWorldPanels) const noexcept
@@ -333,10 +320,6 @@ private:
     {
         (factory.createPanel(std::type_identity<PanelTypes>{}, containerPanel), ...);
     }
-
-    static constexpr auto kCrucialDependencies{
-        HookDependenciesMask{}
-            .set<WorldToClipSpaceConverter>()};
 
     HookContext& hookContext;
     std::size_t currentIndex{0};
